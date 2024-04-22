@@ -1253,6 +1253,19 @@ class Project:
         """Perform only the network IO portion of the sync process.
         Local working directory/branch state is not affected.
         """
+        mp = self.manifest.manifestProject
+        if not hasattr(mp, 'reference_only'):
+            mp.reference_only = False
+        elif mp.reference_only:
+            logger.debug(f"Sync_NetworkHalf: Original remote is {self.remote.url} Reference remote is {mp.reference}")
+            if mp.reference != "":
+                if self.name != "manifests":
+                    # reference path is already checked before
+                    local_bare_repo_name = os.path.join(mp.reference , self.name + ".git")
+                    logger.info(f"Sync_NetworkHalf: Local bare repo name {local_bare_repo_name}")
+                    self.remote.url = local_bare_repo_name
+            else:
+                logger.error("--reference-only is given but no --reference option --> ignore it")
         if archive and not isinstance(self, MetaProject):
             if self.remote.url.startswith(("http://", "https://")):
                 msg_template = (
@@ -2996,6 +3009,7 @@ class Project:
             if init_git_dir:
                 mp = self.manifest.manifestProject
                 ref_dir = mp.reference or ""
+                logger.debug(f"InitGitDir: Reference Dir: {ref_dir}")
 
                 def _expanded_ref_dirs():
                     """Iterate through possible git reference dir paths."""
@@ -3045,6 +3059,8 @@ class Project:
                 self.config.SetBoolean(
                     "core.bare", True if self.manifest.IsMirror else None
                 )
+
+
 
             if not init_obj_dir:
                 # The project might be shared (obj_dir already initialized), but
@@ -4005,6 +4021,11 @@ class ManifestProject(MetaProject):
         return self.config.GetString("repo.reference")
 
     @property
+    def reference_only(self):
+        """The --reference-only flag for this manifest."""
+        return self.config.GetBoolean("repo.reference-only")
+
+    @property
     def dissociate(self):
         """Whether to dissociate."""
         return self.config.GetBoolean("repo.dissociate")
@@ -4147,6 +4168,7 @@ class ManifestProject(MetaProject):
             this_manifest_only=True,
             outer_manifest=False,
             clone_filter_for_depth=mp.clone_filter_for_depth,
+            reference_only=mp.reference_only,
         )
 
     def Sync(
@@ -4178,6 +4200,7 @@ class ManifestProject(MetaProject):
         this_manifest_only=False,
         outer_manifest=True,
         clone_filter_for_depth=None,
+        reference_only=False,
     ):
         """Sync the manifest and all submanifests.
 
@@ -4264,6 +4287,7 @@ class ManifestProject(MetaProject):
                 manifest_name=manifest_name,
                 this_manifest_only=this_manifest_only,
                 outer_manifest=False,
+                reference_only=reference_only,
             )
 
         # If repo has already been initialized, we take -u with the absence of
@@ -4390,6 +4414,12 @@ class ManifestProject(MetaProject):
 
         if reference:
             self.config.SetString("repo.reference", reference)
+
+        if reference_only:
+            if reference == "":
+                logger.error("fatal: --reference-only requires --reference as well")
+                return False
+            self.config.SetBoolean("repo.reference-only", reference_only)
 
         if dissociate:
             self.config.SetBoolean("repo.dissociate", dissociate)
@@ -4572,6 +4602,7 @@ class ManifestProject(MetaProject):
                     manifest_name=spec.manifestName,
                     this_manifest_only=False,
                     outer_manifest=False,
+                    reference_only=reference_only,
                 )
 
         # Lastly, if the manifest has a <superproject> then have the

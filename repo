@@ -382,6 +382,14 @@ def InitParser(parser):
         "--reference", help="location of mirror directory", metavar="DIR"
     )
     group.add_option(
+        "--reference-only",
+        action="store_true",
+        help="""Ignore network fetch origin and ALWAYS use the local
+                mirror given by --reference option; is ignored if
+                --reference option is not given;
+                Suppresses access to the network""",
+    )
+    group.add_option(
         "--dissociate",
         action="store_true",
         help="dissociate from reference mirrors after clone",

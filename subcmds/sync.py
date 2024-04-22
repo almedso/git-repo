@@ -724,6 +724,7 @@ later is required to fix a server side protocol bug.
         """
         start = time.time()
         k = f"{project.name} @ {project.relpath}"
+        logger.debug(f"\nFetchOne: name@project {k}")
         self._sync_dict[k] = start
         success = False
         remote_fetched = False
@@ -782,6 +783,7 @@ later is required to fix a server side protocol bug.
 
         finish = time.time()
         del self._sync_dict[k]
+        logger.debug(f"FetchOne: remote_fetched {remote_fetched}")
         return _FetchOneResult(
             success, errors, project, start, finish, remote_fetched
         )
